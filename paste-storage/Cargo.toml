@@ -1,0 +1,10 @@
+[package]
+name = "paste-storage"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.88"
+dyn-clone = "1.0.19"
+mongodb = "3.2.2"
+serde = "1.0.219"

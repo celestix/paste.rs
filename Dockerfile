@@ -3,9 +3,8 @@ WORKDIR /app
 COPY . .
 RUN cargo build --release
 
-FROM scratch
-COPY --from=builder /app/target/release/paste /paste
-ENV RUST_LOG=debug
-ENV RUST_BACKTRACE=1
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/target/release/paste /app/paste
 EXPOSE 8080
-ENTRYPOINT ["/paste"]
+CMD ["/app/paste"]
