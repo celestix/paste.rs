@@ -69,5 +69,5 @@ async fn main() -> std::io::Result<()> {
             .wrap(actix_web::middleware::Logger::default())
             .app_data(web::Data::new(paste_map.clone()))
             .configure(setup_app_config)
-    ).bind(("127.0.0.1", 8080))?.run().await
+    ).bind(("0.0.0.0", 8080))?.run().await
 }
