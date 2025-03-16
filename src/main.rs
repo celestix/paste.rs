@@ -1,10 +1,11 @@
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, sync::{Arc, RwLock}};
 
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-trait Store {
+
+trait Store: Send + Sync {
     fn get(&self, key: String) -> Option<String>;
     fn set(&self, key: String, value: String);
 }
@@ -37,7 +38,7 @@ async fn index() -> impl Responder {
 }
 
 #[get("/{name}")]
-async fn get_paste(name: web::Path<String>, store: web::Data<Box<dyn Store>>) -> impl Responder {
+async fn get_paste(name: web::Path<String>, store: web::Data<Arc<dyn Store>>) -> impl Responder {
     let s =  store.get(name.into_inner());
     match s {
         Some(s) => s,
@@ -46,29 +47,27 @@ async fn get_paste(name: web::Path<String>, store: web::Data<Box<dyn Store>>) ->
 }
 
 #[post("/{name}")]
-async fn save_paste(name: web::Path<String>, pval: String, store: web::Data<Box<dyn Store>>) -> impl Responder {
+async fn save_paste(name: web::Path<String>, pval: String, store: web::Data<Arc<dyn Store>>) -> impl Responder {
     store.set(name.into_inner(), pval);
     HttpResponse::Accepted()
 }
 
 fn setup_app_config(cfg: &mut web::ServiceConfig) {
-    let paste_map = Box::new(InMemoryStore::new()) as Box<dyn Store>;
     cfg
     .service(index)
     .service(save_paste)
-    .service(get_paste)
-    .app_data(web::Data::new(paste_map));
+    .service(get_paste);
 }
 
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // std::env::set_var("RUST_LOG", "debug");
-    // std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
+    let paste_map = Arc::new(InMemoryStore::new()) as Arc<dyn Store>;
     HttpServer::new(
-        || App::new()
+        move || App::new()
             .wrap(actix_web::middleware::Logger::default())
+            .app_data(web::Data::new(paste_map.clone()))
             .configure(setup_app_config)
     ).bind(("127.0.0.1", 8080))?.run().await
 }
